@@ -173,10 +173,10 @@
                         gain.connect(audioCtx.destination);
                         osc.type = 'sine';
                         osc.frequency.value = notes[currentNote % notes.length];
-                        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                        gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
                         osc.start(audioCtx.currentTime);
-                        osc.stop(audioCtx.currentTime + 0.2);
+                        osc.stop(audioCtx.currentTime + 0.15);
                         currentNote = (currentNote + 1) % notes.length;
                     } catch(e) {}
                 }
@@ -187,7 +187,7 @@
                         isMusicPlaying = true;
                         musicStatus.textContent = '🎵';
                         if (intervalId) clearInterval(intervalId);
-                        intervalId = setInterval(playNote, 250);
+                        intervalId = setInterval(playNote, 200);
                         playNote();
                     },
                     pause: function() {
@@ -234,7 +234,7 @@
             } catch (e) {}
         }
         
-        // ===== СЕРДЦЕ - ПРАВИЛЬНАЯ ФОРМА =====
+        // ===== СЕРДЦЕ =====
         function heartXY(t) {
             const x = 16 * Math.pow(Math.sin(t), 3);
             const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
@@ -246,7 +246,7 @@
             HEIGHT = window.innerHeight;
             canvas.width = WIDTH;
             canvas.height = HEIGHT;
-            SCALE = Math.min(WIDTH, HEIGHT) / 50;
+            SCALE = Math.min(WIDTH, HEIGHT) / 48;
         }
         
         function createHeartParticles() {
@@ -257,56 +257,51 @@
                 '#006400', '#004400'
             ];
             
-            // Параметры сердца
             const scale = SCALE;
             const cx = WIDTH / 2;
             const cy = HEIGHT / 2;
             
-            // Количество частиц
-            const totalParticles = isMobile ? 400 : 700;
+            // ОПТИМИЗИРОВАННОЕ КОЛИЧЕСТВО ЧАСТИЦ
+            const totalParticles = isMobile ? 250 : 500;
             
             for (let i = 0; i < totalParticles; i++) {
                 let x, y;
                 let isOutline = false;
                 
-                // 30% частиц - контур, 70% - заполнение
-                if (i < totalParticles * 0.3) {
-                    // Контур - точно по формуле
-                    const t = (i / (totalParticles * 0.3)) * 2 * Math.PI;
+                // 25% контур, 75% заполнение
+                if (i < totalParticles * 0.25) {
+                    const t = (i / (totalParticles * 0.25)) * 2 * Math.PI;
                     const pos = heartXY(t);
                     x = pos.x * scale + cx;
                     y = pos.y * scale + cy;
                     isOutline = true;
                 } else {
-                    // Заполнение - случайные точки внутри сердца
                     let attempts = 0;
                     let found = false;
-                    while (!found && attempts < 50) {
+                    while (!found && attempts < 20) {
                         attempts++;
                         const t = Math.random() * 2 * Math.PI;
-                        const r = Math.random() * 0.95;
+                        const r = Math.random() * 0.92;
                         const pos = heartXY(t);
                         const px = pos.x * r;
                         const py = pos.y * r;
                         x = px * scale + cx;
                         y = py * scale + cy;
                         
-                        // Проверяем, что точка внутри сердца
                         const checkT = Math.atan2(-(y - cy) / scale, (x - cx) / scale);
                         const checkPos = heartXY(checkT);
                         const checkDist = Math.sqrt((x - cx)*(x - cx) + (y - cy)*(y - cy));
                         const heartDist = Math.sqrt(checkPos.x*checkPos.x + checkPos.y*checkPos.y) * scale;
                         
-                        if (checkDist < heartDist * 0.98) {
+                        if (checkDist < heartDist * 0.96) {
                             found = true;
                         }
                     }
                     if (!found) continue;
                 }
                 
-                // Проверяем границы экрана
                 if (x > 0 && x < WIDTH && y > 0 && y < HEIGHT) {
-                    const delay = isOutline ? Math.random() * 50 : 50 + Math.random() * 100;
+                    const delay = isOutline ? Math.random() * 40 : 40 + Math.random() * 80;
                     newParticles.push({
                         x: x,
                         y: y,
@@ -316,9 +311,9 @@
                         flicker: Math.random() * Math.PI * 2,
                         delay: delay,
                         fontSize: isMobile ? 
-                            (isOutline ? 10 + Math.random() * 3 : 7 + Math.random() * 3) : 
-                            (isOutline ? 12 + Math.random() * 4 : 8 + Math.random() * 4),
-                        sizeMult: 0.85 + Math.random() * 0.3,
+                            (isOutline ? 9 + Math.random() * 2 : 6 + Math.random() * 2) : 
+                            (isOutline ? 11 + Math.random() * 3 : 7 + Math.random() * 3),
+                        sizeMult: 0.9 + Math.random() * 0.2,
                         isOutline: isOutline
                     });
                 }
@@ -339,12 +334,12 @@
             // Рисуем все частицы
             for (const p of particles) {
                 if (frame > p.delay && p.alpha < 255) {
-                    p.alpha = Math.min(255, p.alpha + 10 + Math.floor(Math.random() * 4));
+                    p.alpha = Math.min(255, p.alpha + 12 + Math.floor(Math.random() * 3));
                 }
                 
                 let flick = 1.0;
                 if (p.alpha >= 255) {
-                    flick = 0.75 + 0.25 * Math.sin(frame * 0.04 + p.flicker);
+                    flick = 0.8 + 0.2 * Math.sin(frame * 0.04 + p.flicker);
                 }
                 
                 const alpha = Math.floor(p.alpha * flick);
@@ -354,17 +349,17 @@
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 
-                // Свечение для контура
-                if (alpha > 10 && p.isOutline) {
+                // Только контур со свечением (и то меньше)
+                if (alpha > 10 && p.isOutline && !isMobile) {
                     ctx.shadowColor = p.color;
-                    ctx.shadowBlur = fontSize * 3;
+                    ctx.shadowBlur = fontSize * 2;
                     ctx.globalAlpha = alpha / 400;
                     ctx.fillStyle = p.color;
-                    ctx.font = `bold ${fontSize * 2.5}px Arial`;
+                    ctx.font = `bold ${fontSize * 2}px Arial`;
                     ctx.fillText(p.word, p.x, p.y);
                 }
                 
-                // Основной текст
+                // Основной текст (без свечения на телефоне)
                 ctx.shadowBlur = 0;
                 ctx.globalAlpha = alpha / 255;
                 ctx.fillStyle = p.color;
@@ -438,7 +433,7 @@
         initAudio();
         startAnimation();
         
-        console.log('❤️ Love You - анимация запущена!');
+        console.log('❤️ Love You - оптимизированная версия!');
     </script>
 </body>
 </html>
