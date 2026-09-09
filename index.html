@@ -90,7 +90,7 @@
 </head>
 <body>
     <canvas id="heartCanvas"></canvas>
-    <div id="centerText">Love You</div>
+    <div id="centerText">I Love You</div>
 
     <script>
         const isMobile = window.innerWidth < 768;
@@ -105,19 +105,8 @@
         let animationId = null;
         let isRunning = true;
         
-        // ===== ФРАЗЫ =====
-        const WORDS = [
-            'Love You', 'I Love You', 'Love', 'Forever', 
-            'My Love', 'Always', 'You', 'Honey',
-            'Sweetheart', 'Darling', 'My Heart', 'Soulmate',
-            'Beloved', 'Dear', 'Angel', 'My World',
-            'Everything', 'Amor', 'Infinity', 'You Are',
-            'Special', 'Perfect', 'Beautiful', 'Wonderful',
-            'Amazing', 'Adore You', 'Cherish You', 'Need You',
-            'Miss You', 'Hold You', 'Kiss You', 'Hug You',
-            'Stay With Me', 'Be Mine', 'True Love', 'Endless Love',
-            'Always Love', 'Only You', 'Forever Yours', 'My Everything'
-        ];
+        // ===== ТОЛЬКО ОДНА ФРАЗА =====
+        const WORD = 'I Love You';
         
         const COLORS = [
             '#ff0000', '#ff1414', '#ff2828', '#cc0000', '#aa0000',
@@ -147,7 +136,6 @@
             const cx = WIDTH / 2;
             const cy = HEIGHT / 2;
             
-            // МАКСИМАЛЬНО ОПТИМИЗИРОВАННОЕ КОЛИЧЕСТВО
             const totalParticles = isMobile ? 200 : 450;
             
             for (let i = 0; i < totalParticles; i++) {
@@ -173,7 +161,6 @@
                         x = px * scale + cx;
                         y = py * scale + cy;
                         
-                        // Простая проверка
                         const dist = Math.sqrt((x - cx)*(x - cx) + (y - cy)*(y - cy));
                         const maxDist = 16 * scale;
                         if (dist < maxDist) {
@@ -184,13 +171,12 @@
                 }
                 
                 if (x > 0 && x < WIDTH && y > 0 && y < HEIGHT) {
-                    const word = WORDS[Math.floor(Math.random() * WORDS.length)];
                     const color = COLORS[Math.floor(Math.random() * COLORS.length)];
                     
                     newParticles.push({
                         x: x,
                         y: y,
-                        word: word,
+                        word: WORD,
                         color: color,
                         alpha: 0,
                         flicker: Math.random() * Math.PI * 2,
@@ -215,7 +201,6 @@
             
             ctx.clearRect(0, 0, WIDTH, HEIGHT);
             
-            // ОПТИМИЗИРОВАННЫЙ РЕНДЕРИНГ
             for (const p of particles) {
                 if (frame > p.delay && p.alpha < 255) {
                     p.alpha = Math.min(255, p.alpha + 15);
@@ -233,7 +218,6 @@
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 
-                // БЕЗ СВЕЧЕНИЯ ДЛЯ ПРОИЗВОДИТЕЛЬНОСТИ
                 ctx.shadowBlur = 0;
                 ctx.globalAlpha = alpha / 255;
                 ctx.fillStyle = p.color;
@@ -302,7 +286,7 @@
         // Запускаем!
         startAnimation();
         
-        console.log('❤️ Love You - супер оптимизированная версия!');
+        console.log('❤️ I Love You - финальная версия!');
     </script>
 </body>
 </html>
