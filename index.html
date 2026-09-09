@@ -122,6 +122,27 @@
         let animationId = null;
         let isRunning = true;
         
+        // ===== МНОГО ФРАЗ ДЛЯ СЕРДЦА =====
+        const WORDS = [
+            'Love You', 'I Love You', 'Love', 'Forever', 
+            'My Love', 'Always', 'You', 'Honey',
+            'Sweetheart', 'Darling', 'My Heart', 'Soulmate',
+            'Beloved', 'Dear', 'Angel', 'My World',
+            'Everything', 'Amor', 'Love You More',
+            'Infinity', 'You Are', 'Special', 'Perfect',
+            'Beautiful', 'Wonderful', 'Amazing', 'Adore You',
+            'Cherish You', 'Need You', 'Miss You', 'Hold You',
+            'Kiss You', 'Hug You', 'Stay With Me', 'Be Mine',
+            'True Love', 'Endless Love', 'Always Love', 'Only You'
+        ];
+        
+        const COLORS = [
+            '#ff0000', '#ff1414', '#ff2828', '#cc0000', '#aa0000',
+            '#ff3333', '#dc143c', '#ff0a0a', '#e60000', '#ff4040',
+            '#ff5555', '#ff6666', '#ff0000', '#cc0033', '#990033',
+            '#006400', '#004400', '#008000', '#006600'
+        ];
+        
         // ===== МУЗЫКА =====
         const musicStatus = document.getElementById('musicStatus');
         let audio = null;
@@ -251,26 +272,21 @@
         
         function createHeartParticles() {
             const newParticles = [];
-            const colors = [
-                '#ff0000', '#ff1414', '#ff2828', '#cc0000', '#aa0000',
-                '#ff3333', '#dc143c', '#ff0a0a', '#e60000', '#ff4040',
-                '#006400', '#004400'
-            ];
             
             const scale = SCALE;
             const cx = WIDTH / 2;
             const cy = HEIGHT / 2;
             
-            // ОПТИМИЗИРОВАННОЕ КОЛИЧЕСТВО ЧАСТИЦ
-            const totalParticles = isMobile ? 250 : 500;
+            // Больше частиц для большего количества фраз
+            const totalParticles = isMobile ? 350 : 650;
             
             for (let i = 0; i < totalParticles; i++) {
                 let x, y;
                 let isOutline = false;
                 
-                // 25% контур, 75% заполнение
-                if (i < totalParticles * 0.25) {
-                    const t = (i / (totalParticles * 0.25)) * 2 * Math.PI;
+                // 20% контур, 80% заполнение
+                if (i < totalParticles * 0.2) {
+                    const t = (i / (totalParticles * 0.2)) * 2 * Math.PI;
                     const pos = heartXY(t);
                     x = pos.x * scale + cx;
                     y = pos.y * scale + cy;
@@ -302,11 +318,16 @@
                 
                 if (x > 0 && x < WIDTH && y > 0 && y < HEIGHT) {
                     const delay = isOutline ? Math.random() * 40 : 40 + Math.random() * 80;
+                    
+                    // Рандомно выбираем фразу
+                    const word = WORDS[Math.floor(Math.random() * WORDS.length)];
+                    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+                    
                     newParticles.push({
                         x: x,
                         y: y,
-                        word: 'Love You',
-                        color: colors[Math.floor(Math.random() * colors.length)],
+                        word: word,
+                        color: color,
                         alpha: 0,
                         flicker: Math.random() * Math.PI * 2,
                         delay: delay,
@@ -331,7 +352,6 @@
             
             ctx.clearRect(0, 0, WIDTH, HEIGHT);
             
-            // Рисуем все частицы
             for (const p of particles) {
                 if (frame > p.delay && p.alpha < 255) {
                     p.alpha = Math.min(255, p.alpha + 12 + Math.floor(Math.random() * 3));
@@ -349,7 +369,7 @@
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 
-                // Только контур со свечением (и то меньше)
+                // Свечение для контура
                 if (alpha > 10 && p.isOutline && !isMobile) {
                     ctx.shadowColor = p.color;
                     ctx.shadowBlur = fontSize * 2;
@@ -359,7 +379,7 @@
                     ctx.fillText(p.word, p.x, p.y);
                 }
                 
-                // Основной текст (без свечения на телефоне)
+                // Основной текст
                 ctx.shadowBlur = 0;
                 ctx.globalAlpha = alpha / 255;
                 ctx.fillStyle = p.color;
@@ -433,7 +453,7 @@
         initAudio();
         startAnimation();
         
-        console.log('❤️ Love You - оптимизированная версия!');
+        console.log('❤️ Love You - с множеством фраз!');
     </script>
 </body>
 </html>
