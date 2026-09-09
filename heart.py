@@ -127,7 +127,7 @@ def main():
         print("⚠️ Файл love_you.mp3 не найден")
 
     screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.DOUBLEBUF)
-    pygame.display.set_caption("I love you <3 ❤️")
+    pygame.display.set_caption("I love you <3 ")
     clock = pygame.time.Clock()
     
     try:

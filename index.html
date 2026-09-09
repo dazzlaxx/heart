@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>I Love You</title>
     <style>
         * {
@@ -16,18 +16,26 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            min-height: 100dvh;
             overflow: hidden;
             font-family: 'Georgia', serif;
             touch-action: none;
+            position: fixed;
+            width: 100%;
+            height: 100%;
         }
         canvas {
             display: block;
             width: 100vw;
             height: 100vh;
+            height: 100dvh;
             touch-action: none;
+            position: fixed;
+            top: 0;
+            left: 0;
         }
         #centerText {
-            position: absolute;
+            position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
@@ -44,6 +52,7 @@
             pointer-events: none;
             letter-spacing: 6px;
             white-space: nowrap;
+            z-index: 10;
         }
         @keyframes fadeInPulse {
             0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
@@ -66,13 +75,16 @@
             }
         }
         .info {
-            position: absolute;
+            position: fixed;
             bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             color: rgba(255,255,255,0.15);
             font-size: 11px;
             font-family: Arial, sans-serif;
             letter-spacing: 2px;
             pointer-events: none;
+            z-index: 10;
         }
         @media (max-width: 768px) {
             .info {
@@ -95,228 +107,279 @@
 <body>
     <canvas id="heartCanvas"></canvas>
     <div id="centerText">Love You</div>
-    <div class="info">нажми ESC для выхода</div>
+    <div class="info">tap for exit</div>
 
     <script>
-        const canvas = document.getElementById('heartCanvas');
-        const ctx = canvas.getContext('2d');
-        
-        let WIDTH, HEIGHT, SCALE, isMobile;
-        
-        function resize() {
-            WIDTH = window.innerWidth;
-            HEIGHT = window.innerHeight;
-            canvas.width = WIDTH;
-            canvas.height = HEIGHT;
+        (function() {
+            'use strict';
             
-            isMobile = WIDTH < 768;
+            const canvas = document.getElementById('heartCanvas');
+            const ctx = canvas.getContext('2d');
             
-            // Масштаб адаптируется под размер экрана
-            const baseScale = Math.min(WIDTH, HEIGHT) / 55;
-            SCALE = isMobile ? Math.min(WIDTH, HEIGHT) / 50 : baseScale;
+            let WIDTH, HEIGHT, SCALE, isMobile;
+            let particles = [];
+            let frame = 0;
+            let startTime = Date.now();
+            let animationId = null;
+            let isRunning = true;
             
-            // Перестраиваем частицы при изменении размера
-            particles = buildParticles();
-        }
-        
-        resize();
-        window.addEventListener('resize', () => {
-            resize();
-        });
-
-        // Параметры
-        const WORDS = ['Love You', 'Love You', 'Love You'];
-        const COLORS = [
-            '#ff0000', '#ff1414', '#ff2828', '#cc0000', '#aa0000',
-            '#ff3333', '#dc143c', '#ff0a0a', '#e60000', '#ff4040',
-            '#006400', '#004400'
-        ];
-
-        function heartXY(t) {
-            const x = 16 * Math.pow(Math.sin(t), 3);
-            const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
-            return [x, -y];
-        }
-
-        function toScreen(x, y) {
-            return [x * SCALE + WIDTH/2, y * SCALE + HEIGHT/2];
-        }
-
-        class Particle {
-            constructor(x, y, order, kind) {
-                this.x = x;
-                this.y = y;
-                this.order = order;
-                this.kind = kind;
-                this.word = WORDS[Math.floor(Math.random() * WORDS.length)];
-                this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
-                this.alpha = 0;
-                this.flicker = Math.random() * Math.PI * 2;
-                this.delay = 0;
+            function resize() {
+                WIDTH = window.innerWidth;
+                HEIGHT = window.innerHeight;
+                canvas.width = WIDTH;
+                canvas.height = HEIGHT;
                 
-                // Адаптивные размеры шрифта
-                if (isMobile) {
-                    this.fontSize = kind === 'outline' ? 10 : 9;
-                } else {
-                    this.fontSize = kind === 'outline' ? 14 : 12;
-                }
-                this.sizeMult = 0.85 + Math.random() * 0.3;
-            }
-        }
-
-        function buildParticles() {
-            const particles = [];
-            const placed = [];
-            
-            // Адаптивное количество частиц
-            const nOutline = isMobile ? 100 : 160;
-            const nFill = isMobile ? 80 : 130;
-            const gapMultiplier = isMobile ? 0.7 : 1;
-            
-            const minGap1 = 30 * (SCALE / 20) * gapMultiplier;
-            
-            for (let i = 0; i < nOutline; i++) {
-                const t = (i / nOutline) * 2 * Math.PI;
-                const [bx, by] = heartXY(t);
-                const [sx, sy] = toScreen(bx, by);
-                let tooClose = false;
-                for (const [px, py] of placed) {
-                    if (Math.hypot(sx - px, sy - py) < minGap1) {
-                        tooClose = true;
-                        break;
-                    }
-                }
-                if (tooClose) continue;
-                placed.push([sx, sy]);
-                particles.push(new Particle(sx, sy, i, 'outline'));
+                isMobile = WIDTH < 768;
+                
+                const baseScale = Math.min(WIDTH, HEIGHT) / 55;
+                SCALE = isMobile ? Math.min(WIDTH, HEIGHT) / 48 : baseScale;
+                
+                // Перестраиваем частицы при изменении размера
+                particles = buildParticles();
             }
             
-            const minGap2 = 46 * (SCALE / 20) * gapMultiplier;
-            let attempts = 0;
-            const maxAttempts = nFill * 80;
-            
-            while (particles.length - nOutline < nFill && attempts < maxAttempts) {
-                attempts++;
-                const t = Math.random() * 2 * Math.PI;
-                const r = 0.1 + Math.random() * 0.76;
-                const [bx, by] = heartXY(t);
-                const [px, py] = [bx * r, by * r];
-                const [sx, sy] = toScreen(px, py);
-                
-                let tooClose = false;
-                for (const [qx, qy] of placed) {
-                    if (Math.hypot(sx - qx, sy - qy) < minGap2) {
-                        tooClose = true;
-                        break;
-                    }
-                }
-                if (tooClose) continue;
-                
-                placed.push([sx, sy]);
-                const p = new Particle(sx, sy, Math.floor(Math.random() * 320), 'fill');
-                particles.push(p);
+            function heartXY(t) {
+                const x = 16 * Math.pow(Math.sin(t), 3);
+                const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+                return [x, -y];
             }
-            
-            // Задержки
-            const outlineSpan = particles.filter(p => p.kind === 'outline').length;
-            const framesPerStep = 1.6;
-            const fillStart = Math.floor(outlineSpan * framesPerStep) + 30;
-            
-            for (const p of particles) {
-                if (p.kind === 'outline') {
-                    p.delay = Math.floor(p.order * framesPerStep);
-                } else {
-                    p.delay = fillStart + p.order;
-                }
+
+            function toScreen(x, y) {
+                return [x * SCALE + WIDTH/2, y * SCALE + HEIGHT/2];
             }
-            
-            return particles;
-        }
 
-        let particles = buildParticles();
-        let frame = 0;
-        let startTime = Date.now();
-
-        const centerTextEl = document.getElementById('centerText');
-        setTimeout(() => {
-            centerTextEl.classList.add('pulse');
-        }, 3000);
-
-        function draw() {
-            const now = Date.now();
-            const elapsed = (now - startTime) / 16.67;
-            frame = Math.floor(elapsed);
-            
-            ctx.clearRect(0, 0, WIDTH, HEIGHT);
-            
-            // Оптимизация для телефона - ограничиваем количество рисуемых частиц
-            const drawParticles = particles;
-            
-            for (const p of drawParticles) {
-                if (frame > p.delay && p.alpha < 255) {
-                    p.alpha = Math.min(255, p.alpha + 14 + Math.floor(Math.random() * 5));
-                }
-                
-                let flick = 1.0;
-                if (p.alpha >= 255) {
-                    flick = 0.75 + 0.25 * Math.sin(frame * 0.04 + p.flicker);
-                }
-                
-                const alpha = Math.floor(p.alpha * flick);
-                if (alpha <= 0) continue;
-                
-                const fontSize = (p.fontSize || 12) * p.sizeMult;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                
-                // Упрощаем свечение для мобильных устройств
-                if (alpha > 10 && !isMobile) {
-                    ctx.shadowColor = p.color;
-                    ctx.shadowBlur = fontSize * 2.2;
-                    ctx.globalAlpha = alpha / 510;
-                    ctx.fillStyle = p.color;
-                    ctx.font = `bold ${fontSize * 2.4}px Arial`;
-                    ctx.fillText(p.word, p.x, p.y);
+            class Particle {
+                constructor(x, y, order, kind) {
+                    this.x = x;
+                    this.y = y;
+                    this.order = order;
+                    this.kind = kind;
+                    this.word = 'Love You';
+                    this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+                    this.alpha = 0;
+                    this.flicker = Math.random() * Math.PI * 2;
+                    this.delay = 0;
                     
-                    ctx.shadowBlur = fontSize * 1.6;
-                    ctx.globalAlpha = alpha / 170;
-                    ctx.font = `bold ${fontSize * 1.6}px Arial`;
-                    ctx.fillText(p.word, p.x, p.y);
-                } else if (alpha > 10 && isMobile) {
-                    // Упрощённое свечение для телефона
-                    ctx.shadowColor = p.color;
-                    ctx.shadowBlur = fontSize * 1.5;
+                    if (isMobile) {
+                        this.fontSize = kind === 'outline' ? 9 : 8;
+                    } else {
+                        this.fontSize = kind === 'outline' ? 14 : 12;
+                    }
+                    this.sizeMult = 0.85 + Math.random() * 0.3;
+                }
+            }
+
+            const WORDS = ['Love You', 'Love You', 'Love You'];
+            const COLORS = [
+                '#ff0000', '#ff1414', '#ff2828', '#cc0000', '#aa0000',
+                '#ff3333', '#dc143c', '#ff0a0a', '#e60000', '#ff4040',
+                '#006400', '#004400'
+            ];
+
+            function buildParticles() {
+                const newParticles = [];
+                const placed = [];
+                
+                const nOutline = isMobile ? 90 : 160;
+                const nFill = isMobile ? 70 : 130;
+                const gapMultiplier = isMobile ? 0.65 : 1;
+                
+                const minGap1 = 30 * (SCALE / 20) * gapMultiplier;
+                
+                for (let i = 0; i < nOutline; i++) {
+                    const t = (i / nOutline) * 2 * Math.PI;
+                    const [bx, by] = heartXY(t);
+                    const [sx, sy] = toScreen(bx, by);
+                    let tooClose = false;
+                    for (const [px, py] of placed) {
+                        if (Math.hypot(sx - px, sy - py) < minGap1) {
+                            tooClose = true;
+                            break;
+                        }
+                    }
+                    if (tooClose) continue;
+                    placed.push([sx, sy]);
+                    newParticles.push(new Particle(sx, sy, i, 'outline'));
+                }
+                
+                const minGap2 = 46 * (SCALE / 20) * gapMultiplier;
+                let attempts = 0;
+                const maxAttempts = nFill * 80;
+                
+                while (newParticles.length - nOutline < nFill && attempts < maxAttempts) {
+                    attempts++;
+                    const t = Math.random() * 2 * Math.PI;
+                    const r = 0.1 + Math.random() * 0.76;
+                    const [bx, by] = heartXY(t);
+                    const [px, py] = [bx * r, by * r];
+                    const [sx, sy] = toScreen(px, py);
+                    
+                    let tooClose = false;
+                    for (const [qx, qy] of placed) {
+                        if (Math.hypot(sx - qx, sy - qy) < minGap2) {
+                            tooClose = true;
+                            break;
+                        }
+                    }
+                    if (tooClose) continue;
+                    
+                    placed.push([sx, sy]);
+                    const p = new Particle(sx, sy, Math.floor(Math.random() * 320), 'fill');
+                    newParticles.push(p);
+                }
+                
+                const outlineSpan = newParticles.filter(p => p.kind === 'outline').length;
+                const framesPerStep = 1.6;
+                const fillStart = Math.floor(outlineSpan * framesPerStep) + 30;
+                
+                for (const p of newParticles) {
+                    if (p.kind === 'outline') {
+                        p.delay = Math.floor(p.order * framesPerStep);
+                    } else {
+                        p.delay = fillStart + p.order;
+                    }
+                }
+                
+                return newParticles;
+            }
+
+            function draw() {
+                if (!isRunning) return;
+                
+                const now = Date.now();
+                const elapsed = (now - startTime) / 16.67;
+                frame = Math.floor(elapsed);
+                
+                ctx.clearRect(0, 0, WIDTH, HEIGHT);
+                
+                // Оптимизация для телефона - рисуем меньше частиц за кадр
+                const drawParticles = particles;
+                const step = isMobile ? 2 : 1;
+                
+                for (let i = 0; i < drawParticles.length; i += step) {
+                    const p = drawParticles[i];
+                    
+                    if (frame > p.delay && p.alpha < 255) {
+                        p.alpha = Math.min(255, p.alpha + 14 + Math.floor(Math.random() * 5));
+                    }
+                    
+                    let flick = 1.0;
+                    if (p.alpha >= 255) {
+                        flick = 0.75 + 0.25 * Math.sin(frame * 0.04 + p.flicker);
+                    }
+                    
+                    const alpha = Math.floor(p.alpha * flick);
+                    if (alpha <= 0) continue;
+                    
+                    const fontSize = p.fontSize * p.sizeMult;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    
+                    if (alpha > 10 && !isMobile) {
+                        ctx.shadowColor = p.color;
+                        ctx.shadowBlur = fontSize * 2.2;
+                        ctx.globalAlpha = alpha / 510;
+                        ctx.fillStyle = p.color;
+                        ctx.font = `bold ${fontSize * 2.4}px Arial`;
+                        ctx.fillText(p.word, p.x, p.y);
+                        
+                        ctx.shadowBlur = fontSize * 1.6;
+                        ctx.globalAlpha = alpha / 170;
+                        ctx.font = `bold ${fontSize * 1.6}px Arial`;
+                        ctx.fillText(p.word, p.x, p.y);
+                    } else if (alpha > 10 && isMobile) {
+                        ctx.shadowColor = p.color;
+                        ctx.shadowBlur = fontSize * 1.2;
+                        ctx.globalAlpha = alpha / 255;
+                        ctx.fillStyle = p.color;
+                        ctx.font = `bold ${fontSize * 1.5}px Arial`;
+                        ctx.fillText(p.word, p.x, p.y);
+                    }
+                    
+                    ctx.shadowBlur = 0;
                     ctx.globalAlpha = alpha / 255;
                     ctx.fillStyle = p.color;
-                    ctx.font = `bold ${fontSize * 1.8}px Arial`;
+                    ctx.font = `bold ${fontSize}px Arial`;
                     ctx.fillText(p.word, p.x, p.y);
                 }
                 
+                ctx.globalAlpha = 1;
                 ctx.shadowBlur = 0;
-                ctx.globalAlpha = alpha / 255;
-                ctx.fillStyle = p.color;
-                ctx.font = `bold ${fontSize}px Arial`;
-                ctx.fillText(p.word, p.x, p.y);
+                
+                animationId = requestAnimationFrame(draw);
             }
-            
-            ctx.globalAlpha = 1;
-            ctx.shadowBlur = 0;
-            
-            requestAnimationFrame(draw);
-        }
 
-        draw();
+            // Центральный текст
+            const centerTextEl = document.getElementById('centerText');
+            setTimeout(() => {
+                centerTextEl.classList.add('pulse');
+            }, 3000);
 
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                document.body.innerHTML = '<h1 style="color:#ff0000;text-align:center;margin-top:40vh;font-family:Georgia,serif;font-size:clamp(24px,6vw,48px);">Thank You</h1>';
+            // Запуск анимации
+            function startAnimation() {
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                }
+                isRunning = true;
+                particles = buildParticles();
+                frame = 0;
+                startTime = Date.now();
+                draw();
             }
-        });
 
-        // Поддержка тач-событий для телефона
-        document.addEventListener('touchstart', (e) => {
-            // Просто чтобы не скроллилось
-        }, { passive: true });
+            // Инициализация
+            resize();
+            startAnimation();
+
+            // Обработка изменения размера
+            window.addEventListener('resize', () => {
+                resize();
+                startAnimation();
+            });
+
+            // Обработка ориентации экрана
+            window.addEventListener('orientationchange', () => {
+                setTimeout(() => {
+                    resize();
+                    startAnimation();
+                }, 300);
+            });
+
+            // Выход
+            function exitApp() {
+                isRunning = false;
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                    animationId = null;
+                }
+                document.body.innerHTML = `
+                    <h1 style="color:#ff0000;text-align:center;margin-top:40vh;font-family:Georgia,serif;font-size:clamp(24px,6vw,48px);">
+                        Thank You
+                    </h1>
+                    <p style="color:rgba(255,255,255,0.3);text-align:center;font-family:Arial,sans-serif;margin-top:20px;font-size:14px;">
+                        Love You
+                    </p>
+                `;
+            }
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    exitApp();
+                }
+            });
+
+            // Для телефона - тап для выхода
+            document.addEventListener('click', () => {
+                exitApp();
+            });
+
+            // Для телефона - предотвращаем скролл
+            document.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+
+            console.log('❤️ Love You animation started!');
+        })();
     </script>
 </body>
 </html>
