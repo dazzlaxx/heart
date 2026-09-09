@@ -86,28 +86,16 @@
             pointer-events: none;
             z-index: 10;
         }
-        #musicControl {
+        #musicStatus {
             position: fixed;
             top: 20px;
             right: 20px;
             z-index: 20;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            color: #fff;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            cursor: pointer;
+            color: rgba(255,255,255,0.3);
+            font-size: 12px;
             font-family: Arial, sans-serif;
-            transition: all 0.3s;
-            backdrop-filter: blur(5px);
-        }
-        #musicControl:hover {
-            background: rgba(255,255,255,0.2);
-        }
-        #musicControl.playing {
-            border-color: #ff0000;
-            color: #ff0000;
+            pointer-events: none;
+            letter-spacing: 1px;
         }
         @media (max-width: 768px) {
             .info {
@@ -118,9 +106,8 @@
                 letter-spacing: 3px;
                 font-size: clamp(18px, 5.5vw, 35px);
             }
-            #musicControl {
-                font-size: 11px;
-                padding: 6px 12px;
+            #musicStatus {
+                font-size: 10px;
                 top: 12px;
                 right: 12px;
             }
@@ -136,8 +123,8 @@
 <body>
     <canvas id="heartCanvas"></canvas>
     <div id="centerText">Love You</div>
-    <button id="musicControl">🔇 Music</button>
-    <div class="info">tap for exit</div>
+    <div id="musicStatus">🎵</div>
+    <div class="info">❤️</div>
 
     <script>
         const isMobile = window.innerWidth < 768;
@@ -153,34 +140,29 @@
         let isRunning = true;
         
         // ===== МУЗЫКА =====
-        const musicControl = document.getElementById('musicControl');
+        const musicStatus = document.getElementById('musicStatus');
         let audio = null;
         let isMusicPlaying = false;
+        let musicStarted = false;
         
         function initAudio() {
             // Пробуем загрузить MP3
-            const audioFiles = [
-                'love_you.mp3',
-                'music.mp3',
-                'song.mp3'
-            ];
+            const audioFiles = ['love_you.mp3', 'music.mp3', 'song.mp3'];
+            let found = false;
             
             for (const file of audioFiles) {
-                const testAudio = new Audio();
-                testAudio.src = file;
-                // Проверяем, существует ли файл
                 fetch(file, { method: 'HEAD' })
                     .then(response => {
-                        if (response.ok) {
+                        if (response.ok && !found) {
+                            found = true;
                             audio = new Audio(file);
                             audio.loop = true;
                             audio.volume = 0.7;
                             console.log('✅ Музыка загружена:', file);
+                            startMusic();
                         }
                     })
-                    .catch(() => {
-                        // Файл не найден, пробуем следующий
-                    });
+                    .catch(() => {});
             }
             
             // Если не нашли файлы, создаём синтезированную мелодию
@@ -189,7 +171,7 @@
                     console.log('🎵 MP3 файл не найден, создаём синтезированную музыку');
                     createSynthesizedMusic();
                 }
-            }, 1000);
+            }, 1500);
         }
         
         function createSynthesizedMusic() {
@@ -197,35 +179,36 @@
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 const audioCtx = new AudioContext();
                 
-                // Простая синтезированная мелодия
                 const notes = [
                     523, 587, 659, 784, 880, 988, 1047,
-                    523, 523, 587, 587, 659, 659, 784, 784
+                    523, 523, 587, 587, 659, 659, 784, 784,
+                    880, 880, 988, 988, 1047, 1047, 1175, 1175
                 ];
                 
                 let currentNote = 0;
+                let intervalId = null;
                 
                 function playNote() {
                     if (!isMusicPlaying || !audioCtx) return;
                     
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    
-                    osc.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    
-                    osc.type = 'sine';
-                    osc.frequency.value = notes[currentNote % notes.length];
-                    
-                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-                    
-                    osc.start(audioCtx.currentTime);
-                    osc.stop(audioCtx.currentTime + 0.3);
-                    
-                    currentNote++;
-                    
-                    setTimeout(playNote, 400);
+                    try {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        
+                        osc.type = 'sine';
+                        osc.frequency.value = notes[currentNote % notes.length];
+                        
+                        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+                        
+                        osc.start(audioCtx.currentTime);
+                        osc.stop(audioCtx.currentTime + 0.25);
+                        
+                        currentNote++;
+                    } catch(e) {}
                 }
                 
                 audio = {
@@ -234,65 +217,70 @@
                             audioCtx.resume();
                         }
                         isMusicPlaying = true;
-                        musicControl.textContent = '🔊 Music';
-                        musicControl.classList.add('playing');
+                        musicStatus.textContent = '🎵';
+                        if (intervalId) clearInterval(intervalId);
+                        intervalId = setInterval(playNote, 300);
                         playNote();
                     },
                     pause: function() {
                         isMusicPlaying = false;
-                        musicControl.textContent = '🔇 Music';
-                        musicControl.classList.remove('playing');
+                        if (intervalId) {
+                            clearInterval(intervalId);
+                            intervalId = null;
+                        }
+                        musicStatus.textContent = '🎵';
                     },
                     loop: true,
                     volume: 0.7
                 };
                 
+                startMusic();
                 console.log('🎵 Создана синтезированная музыка');
             } catch (e) {
                 console.log('❌ Не удалось создать музыку:', e);
             }
         }
         
-        function toggleMusic() {
-            if (!audio) {
-                initAudio();
-                setTimeout(() => {
-                    if (audio) toggleMusic();
-                }, 500);
-                return;
-            }
+        function startMusic() {
+            if (!audio || musicStarted) return;
             
             try {
-                if (isMusicPlaying) {
-                    audio.pause();
-                    isMusicPlaying = false;
-                    musicControl.textContent = '🔇 Music';
-                    musicControl.classList.remove('playing');
-                } else {
-                    audio.play();
-                    isMusicPlaying = true;
-                    musicControl.textContent = '🔊 Music';
-                    musicControl.classList.add('playing');
+                // Пробуем запустить
+                const playPromise = audio.play();
+                if (playPromise) {
+                    playPromise.then(() => {
+                        isMusicPlaying = true;
+                        musicStarted = true;
+                        musicStatus.textContent = '🎵';
+                        console.log('🎵 Музыка играет');
+                    }).catch(() => {
+                        // Браузер блокирует автозапуск, ждём взаимодействия
+                        musicStatus.textContent = '🎵';
+                        console.log('⏳ Ожидание взаимодействия для запуска музыки');
+                        
+                        // Запускаем при первом взаимодействии
+                        const startOnInteraction = function() {
+                            if (!musicStarted && audio) {
+                                try {
+                                    audio.play().then(() => {
+                                        isMusicPlaying = true;
+                                        musicStarted = true;
+                                        musicStatus.textContent = '🎵';
+                                        console.log('🎵 Музыка запущена');
+                                    }).catch(() => {});
+                                } catch(e) {}
+                            }
+                            document.removeEventListener('click', startOnInteraction);
+                            document.removeEventListener('touchstart', startOnInteraction);
+                        };
+                        document.addEventListener('click', startOnInteraction);
+                        document.addEventListener('touchstart', startOnInteraction);
+                    });
                 }
             } catch (e) {
-                console.log('Ошибка с музыкой:', e);
+                console.log('Ошибка запуска музыки:', e);
             }
         }
-        
-        musicControl.addEventListener('click', toggleMusic);
-        
-        // Автозапуск музыки при первом тапе
-        document.addEventListener('click', function firstTap() {
-            if (!isMusicPlaying && audio) {
-                try {
-                    audio.play();
-                    isMusicPlaying = true;
-                    musicControl.textContent = '🔊 Music';
-                    musicControl.classList.add('playing');
-                } catch (e) {}
-            }
-            document.removeEventListener('click', firstTap);
-        }, { once: true });
         
         // ===== АНИМАЦИЯ =====
         function heartXY(t) {
@@ -479,11 +467,9 @@
             }
         });
         
-        document.addEventListener('click', exitApp);
-        document.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            exitApp();
-        });
+        // Убираем выход по нажатию!
+        // document.addEventListener('click', exitApp); // УДАЛЕНО
+        // document.addEventListener('touchend', exitApp); // УДАЛЕНО
         
         window.addEventListener('resize', () => {
             resize();
@@ -504,6 +490,8 @@
         // Запускаем!
         initAudio();
         startAnimation();
+        
+        console.log('❤️ Love You - анимация запущена! Музыка включится автоматически.');
     </script>
 </body>
 </html>
