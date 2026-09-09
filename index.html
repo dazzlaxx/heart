@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>I Love You ❤️</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            font-family: 'Georgia', serif;
+        }
+        canvas {
+            display: block;
+        }
+        #centerText {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff0000;
+            font-size: clamp(24px, 4vw, 64px);
+            font-weight: bold;
+            font-family: 'Georgia', serif;
+            text-shadow: 
+                0 0 20px rgba(255, 0, 0, 0.8),
+                0 0 40px rgba(255, 0, 0, 0.5),
+                0 0 80px rgba(255, 0, 0, 0.3);
+            opacity: 0;
+            animation: fadeInPulse 3s ease-in forwards;
+            pointer-events: none;
+            letter-spacing: 4px;
+        }
+        @keyframes fadeInPulse {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            30% { opacity: 0; }
+            60% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+            80% { transform: translate(-50%, -50%) scale(0.95); }
+            100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+        #centerText.pulse {
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); text-shadow: 0 0 20px rgba(255,0,0,0.8), 0 0 40px rgba(255,0,0,0.5), 0 0 80px rgba(255,0,0,0.3); }
+            50% { transform: translate(-50%, -50%) scale(1.03); text-shadow: 0 0 30px rgba(255,0,0,1), 0 0 60px rgba(255,0,0,0.7), 0 0 100px rgba(255,0,0,0.4); }
+        }
+        .info {
+            position: absolute;
+            bottom: 20px;
+            color: rgba(255,255,255,0.2);
+            font-size: 12px;
+            font-family: Arial, sans-serif;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="heartCanvas"></canvas>
+    <div id="centerText">❤️ Love You ❤️</div>
+    <div class="info">нажми ESC для выхода</div>
+
+    <script>
+        const canvas = document.getElementById('heartCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Размеры
+        let WIDTH, HEIGHT, SCALE;
+        
+        function resize() {
+            WIDTH = window.innerWidth;
+            HEIGHT = window.innerHeight;
+            canvas.width = WIDTH;
+            canvas.height = HEIGHT;
+            SCALE = Math.min(WIDTH, HEIGHT) / 60;
+        }
+        resize();
+        window.addEventListener('resize', () => {
+            resize();
+            particles = buildParticles();
+        });
+
+        // Параметры
+        const WORDS = ['love you', 'Love You', 'LOVE YOU'];
+        const COLORS = [
+            '#ff0000', '#ff1414', '#ff2828', '#cc0000', '#aa0000',
+            '#ff3333', '#dc143c', '#ff0a0a', '#e60000', '#ff4040',
+            '#006400', '#004400'
+        ];
+
+        // Функция сердца
+        function heartXY(t) {
+            const x = 16 * Math.pow(Math.sin(t), 3);
+            const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+            return [x, -y];
+        }
+
+        function toScreen(x, y) {
+            return [x * SCALE + WIDTH/2, y * SCALE + HEIGHT/2];
+        }
+
+        // Частицы
+        class Particle {
+            constructor(x, y, order, kind) {
+                this.x = x;
+                this.y = y;
+                this.order = order;
+                this.kind = kind;
+                this.word = WORDS[Math.floor(Math.random() * WORDS.length)];
+                this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+                this.alpha = 0;
+                this.flicker = Math.random() * Math.PI * 2;
+                this.delay = 0;
+                this.sizeMult = 0.85 + Math.random() * 0.3;
+                this.fontSize = kind === 'outline' ? 14 : 12;
+            }
+        }
+
+        function buildParticles() {
+            const particles = [];
+            const placed = [];
+            
+            // Контур
+            const nOutline = 160;
+            const minGap1 = 30 * (SCALE / 20);
+            
+            for (let i = 0; i < nOutline; i++) {
+                const t = (i / nOutline) * 2 * Math.PI;
+                const [bx, by] = heartXY(t);
+                const [sx, sy] = toScreen(bx, by);
+                let tooClose = false;
+                for (const [px, py] of placed) {
+                    if (Math.hypot(sx - px, sy - py) < minGap1) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+                if (tooClose) continue;
+                placed.push([sx, sy]);
+                particles.push(new Particle(sx, sy, i, 'outline'));
+            }
+            
+            // Заполнение
+            const nFill = 130;
+            const minGap2 = 46 * (SCALE / 20);
+            let attempts = 0;
+            const maxAttempts = nFill * 80;
+            
+            while (particles.length - 160 < nFill && attempts < maxAttempts) {
+                attempts++;
+                const t = Math.random() * 2 * Math.PI;
+                const r = 0.1 + Math.random() * 0.76;
+                const [bx, by] = heartXY(t);
+                const [px, py] = [bx * r, by * r];
+                const [sx, sy] = toScreen(px, py);
+                
+                let tooClose = false;
+                for (const [qx, qy] of placed) {
+                    if (Math.hypot(sx - qx, sy - qy) < minGap2) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+                if (tooClose) continue;
+                
+                placed.push([sx, sy]);
+                const p = new Particle(sx, sy, Math.floor(Math.random() * 320), 'fill');
+                particles.push(p);
+            }
+            
+            // Задержки
+            const outlineSpan = particles.filter(p => p.kind === 'outline').length;
+            const framesPerStep = 1.6;
+            const fillStart = Math.floor(outlineSpan * framesPerStep) + 30;
+            
+            let idx = 0;
+            for (const p of particles) {
+                if (p.kind === 'outline') {
+                    p.delay = Math.floor(p.order * framesPerStep);
+                } else {
+                    p.delay = fillStart + p.order;
+                }
+                idx++;
+            }
+            
+            return particles;
+        }
+
+        let particles = buildParticles();
+        let frame = 0;
+        let startTime = Date.now();
+
+        // Центральный текст
+        const centerTextEl = document.getElementById('centerText');
+        setTimeout(() => {
+            centerTextEl.classList.add('pulse');
+        }, 3000);
+
+        // Отрисовка
+        function draw() {
+            const now = Date.now();
+            const elapsed = (now - startTime) / 16.67;
+            frame = Math.floor(elapsed);
+            
+            ctx.clearRect(0, 0, WIDTH, HEIGHT);
+            
+            // Рисуем частицы
+            for (const p of particles) {
+                if (frame > p.delay && p.alpha < 255) {
+                    p.alpha = Math.min(255, p.alpha + 14 + Math.floor(Math.random() * 5));
+                }
+                
+                let flick = 1.0;
+                if (p.alpha >= 255) {
+                    flick = 0.75 + 0.25 * Math.sin(frame * 0.04 + p.flicker);
+                }
+                
+                const alpha = Math.floor(p.alpha * flick);
+                if (alpha <= 0) continue;
+                
+                const fontSize = p.fontSize * p.sizeMult;
+                ctx.font = `bold ${fontSize}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Свечение
+                if (alpha > 10) {
+                    ctx.shadowColor = p.color;
+                    ctx.shadowBlur = fontSize * 2.5;
+                    ctx.globalAlpha = alpha / 510;
+                    ctx.fillStyle = p.color;
+                    ctx.font = `bold ${fontSize * 2.4}px Arial`;
+                    ctx.fillText(p.word, p.x, p.y);
+                    
+                    ctx.shadowBlur = fontSize * 1.8;
+                    ctx.globalAlpha = alpha / 170;
+                    ctx.font = `bold ${fontSize * 1.6}px Arial`;
+                    ctx.fillText(p.word, p.x, p.y);
+                }
+                
+                // Основной текст
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = alpha / 255;
+                ctx.fillStyle = p.color;
+                ctx.font = `bold ${fontSize}px Arial`;
+                ctx.fillText(p.word, p.x, p.y);
+            }
+            
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+            
+            requestAnimationFrame(draw);
+        }
+
+        draw();
+
+        // ESC для выхода
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.body.innerHTML = '<h1 style="color:white;text-align:center;margin-top:40vh;">❤️ Спасибо за любовь! ❤️</h1>';
+            }
+        });
+
+        // Адаптация под изменение размера окна
+        window.addEventListener('resize', () => {
+            resize();
+        });
+    </script>
+</body>
+</html>
